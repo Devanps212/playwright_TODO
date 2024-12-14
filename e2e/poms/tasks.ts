@@ -1,24 +1,32 @@
 import { expect, Locator, Page } from "@playwright/test";
+import { CREATE_TASK_SELECTORS, NAVBAR_SELECTORS, TASKS_TABLE_SELECTORS } from "../constants/selectors";
+import { COMMON_TEXTS, DASHBOARD_TEXTS } from '../constants/texts/index'
 
+interface TaskName {
+    taskName: string
+}
+
+interface CreateNewTaskProps extends TaskName {
+    userName?: string;
+}
 
 export default class TaskPage{
     constructor(
-        public page: Page
+        private page: Page
     ){}
     
-    addTask = async({taskName, userName='Oliver Smith'}: {taskName: string, userName?: string})=>{
+    addTask = async({taskName, userName=COMMON_TEXTS.assigneeName}: CreateNewTaskProps)=>{
 
-        await expect(this.page.getByTestId('navbar-logout-link')).toBeVisible()
-        await this.page.getByTestId('navbar-add-todo-link').click()
+        await this.page.getByTestId(NAVBAR_SELECTORS.addTodoButton).click()
 
-        await this.page.getByTestId('form-title-field').fill(taskName)
+        await this.page.getByTestId(CREATE_TASK_SELECTORS.taskTitleField).fill(taskName)
 
-        await this.page.locator(".css-2b097c-container").click();
-        await this.page.locator(".css-26l3qy-menu").getByText(userName).click()
-        await this.page.getByTestId('form-submit-button').click()
+        await this.page.locator(CREATE_TASK_SELECTORS.memberSelectContainer).click();
+        await this.page.locator(CREATE_TASK_SELECTORS.memberOptionField).getByText(userName).click()
+        await this.page.getByTestId(CREATE_TASK_SELECTORS.createTaskButton).click()
 
         const taskInDashBoard = this.page
-        .getByTestId('tasks-pending-table')
+        .getByTestId(TASKS_TABLE_SELECTORS.pendingTasksTable)
         .getByRole('row', { name: new RegExp(taskName, 'i')})
 
         await taskInDashBoard.scrollIntoViewIfNeeded()
@@ -30,7 +38,7 @@ export default class TaskPage{
         // await expect(this.page.getByRole("heading", { name: "Loading..." }))
         // .toBeHidden()
 
-        const completed: Locator = this.page.getByTestId('tasks-completed-table')
+        const completed: Locator = this.page.getByTestId(TASKS_TABLE_SELECTORS.completedTasksTable)
         .getByRole('row', { name: taskName })
 
         const isTaskCompleted: number = await completed.count()
@@ -38,7 +46,7 @@ export default class TaskPage{
         if(isTaskCompleted)return
 
         await this.page
-        .getByTestId('tasks-pending-table')
+        .getByTestId(TASKS_TABLE_SELECTORS.pendingTasksTable)
         .getByRole('row', { name: taskName }).getByRole('checkbox')
         .click()
 
@@ -47,28 +55,31 @@ export default class TaskPage{
     }
 
     deleteTask = async({taskName}: {taskName: string}): Promise<void>=>{
-        const completedTask = this.page.getByTestId('tasks-completed-table')
+        const completedTask = this.page.getByTestId(TASKS_TABLE_SELECTORS.completedTasksTable)
         .getByRole('row', { name: taskName })
 
         const isTaskCompleted: number = await completedTask.count()
 
         if(isTaskCompleted)return
 
-        await completedTask.getByTestId('completed-task-delete-link').click()
+        await completedTask.getByTestId(TASKS_TABLE_SELECTORS.deleteTaskButton).click()
         await expect(completedTask).toBeHidden()
 
-        await expect(this.page.getByTestId("tasks-pending-table")
+        await expect(this.page.getByTestId(TASKS_TABLE_SELECTORS.pendingTasksTable)
         .getByRole("row", { name: taskName })).toBeHidden()
     }
 
     addStar = async({taskName}: {taskName: string})=>{
-        const starIcon = this.page.getByTestId("tasks-pending-table")
+        const starIcon = this.page.getByTestId(TASKS_TABLE_SELECTORS.pendingTasksTable)
         .getByRole('row', { name: taskName })
-        .getByTestId('pending-task-star-or-unstar-link')
+        .getByTestId(TASKS_TABLE_SELECTORS.starUnstarButton)
 
         await starIcon.click()
-        await expect(starIcon).toHaveClass(/ri-star-fill/i)
+        await expect(starIcon).toHaveClass(DASHBOARD_TEXTS.starredTaskClass)
 
-        await expect(this.page.getByTestId("tasks-pending-table").getByRole('row').nth(1)).toContainText(taskName)
+        await expect(this.page
+        .getByTestId(TASKS_TABLE_SELECTORS.pendingTasksTable)
+        .getByRole('row').nth(1)// Using nth methods here since we want to verify the first row of the table
+        ).toContainText(taskName)
     }
 }
